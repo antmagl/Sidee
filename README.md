@@ -20,46 +20,34 @@ Sidee is built around three principles:
 ## Requirements
 
 - Windows 10/11, macOS 15+ (Apple Silicon or Intel), or Linux (x86_64 or aarch64)
+- Python 3.9+ and `pip`
+- `git`
 - A compatible VIDAA TV and a computer on the same home Wi-Fi/Ethernet network
-- Internet access for the initial Windows setup and any online experiences you choose to open on the TV
+- Internet access to install the Python dependencies and to open online
+  experiences on the TV
 
 Compatibility varies by TV model and firmware. The primary tested firmware is U09.60 / V0000.09.60A.Q0707. Support for some other models is experimental; see the [compatibility notes](docs/toshiba-compatibility.md).
 
-## Get started
+## Get started (all operating systems)
 
-### Windows
+This fork is installed from source. It does not publish release packages.
 
-1. [Download Sidee for Windows](https://github.com/antmagl/Sidee/releases) and extract the ZIP.
-2. Double-click `start-windows.bat` in the extracted folder.
-3. Wait for the dashboard to open in your browser, then follow the on-screen steps.
+```bash
+git clone https://github.com/antmagl/Sidee
+cd Sidee
+python -m pip install -r requirements.txt
+python sidee.py
+```
 
-On first launch, Sidee downloads a private, version-pinned Python runtime and its connection dependency from official sources, verifying the downloads using SHA-256. You do not need to install Python yourself, enter commands, or grant administrator rights. Later launches reuse the downloaded runtime.
+- On Windows use `python` in the commands.
+- On macOS and Linux use `python3`.
+- The dashboard opens in your browser. Keep the terminal open while Sidee is
+  running; press `Ctrl+C` to stop it.
+- If the browser does not open automatically, use the full dashboard link
+  printed in the terminal, including its access key.
+- If Windows requests network access, allow it on your trusted home network.
 
-Keep the launcher window open while using the dashboard. If the browser does not open automatically, use the full dashboard link shown in the launcher, including its access key. If Windows requests network access, allow it on your trusted home network.
-
-### macOS
-
-The macOS download includes Sidee.app and its required runtime, so no separate Python installation or Terminal commands are needed.
-
-1. Get the package for your Mac from [Releases](https://github.com/antmagl/Sidee/releases) or a successful [build workflow](https://github.com/antmagl/Sidee/actions/workflows/build.yml). Choose `arm64` for Apple Silicon or `x64` for Intel.
-2. Open the DMG, drag Sidee.app to Applications, and launch it.
-3. Use **Open dashboard** in Sidee's control window.
-
-**Important:** The current macOS builds are not signed or notarized. macOS may prevent them from opening automatically. If you trust the downloaded package, follow [Apple's instructions](https://support.apple.com/en-us/102445) for opening an unverified app. If prompted, grant local network access so Sidee can discover your TV. The builds are checked in CI but still require broader testing on physical Macs.
-
-Sidee's control window must remain open while you use the dashboard; **Quit Sidee** stops the local dashboard service.
-
-### Linux
-
-The Linux download includes Sidee and its runtime, so no separate Python installation is needed.
-
-1. Download `Sidee-linux-x86_64.tar.gz` or `Sidee-linux-aarch64.tar.gz` from [Releases](https://github.com/antmagl/Sidee/releases) or a successful [build workflow](https://github.com/antmagl/Sidee/actions/workflows/build.yml).
-2. Extract it and run the `Sidee/sidee` executable.
-3. Use **Open dashboard** in Sidee's window, or open the address shown in your browser.
-
-Sidee uses a small Tk control window when Python's Tk bindings are available. If Tk is not installed it uses a desktop dialog instead, and still opens the same browser dashboard. Keep the Sidee window or dialog open; closing it stops the local dashboard service. On Wayland or X11 desktop sessions, no extra configuration is required for the dashboard itself.
-
-For a source checkout, run `python sidee.py` as shown under [Development](#development), or use `python linux_launcher.py` for the desktop launcher window.
+Then continue with [Connect your TV](#connect-your-tv).
 
 ## Connect your TV
 
@@ -121,14 +109,7 @@ On macOS, check **System Settings → Privacy & Security → Local Network** and
 
 ## Development
 
-With Python 3.9+ already installed, the dashboard can also be started from a source checkout:
-
-```bash
-python -m pip install -r requirements.txt
-python sidee.py
-```
-
-Optional command-line interface:
+Optional command-line interface, from the same checkout:
 
 ```bash
 python sidee.py discover
@@ -143,11 +124,9 @@ python sidee.py refresh
 
 Replace `TV_IP` with your TV's LAN address and `PRESET_ID` with an available built-in option. Pairing always requires the TV's authorization.
 
-On a Linux desktop, `python linux_launcher.py` opens the same dashboard in a small control window. If Tk is unavailable, install the distribution's Python Tk package (for example `python3-tk`) or let the launcher fall back to a browser/dialog session.
-
 Run Python tests with `python -m unittest discover -s tests` and dashboard interaction tests with `node --test tests/test_dashboard_selection.js`.
 
-Packaging information is in the [macOS build notes](docs/macos-build.md) and [Linux build notes](docs/linux-build.md). Automated Windows, macOS, and Linux builds are available through [GitHub Actions](https://github.com/antmagl/Sidee/actions/workflows/build.yml).
+Packaging information for maintainers is in the [macOS build notes](docs/macos-build.md) and [Linux build notes](docs/linux-build.md).
 
 ## Why Sidee exists
 
