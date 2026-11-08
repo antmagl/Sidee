@@ -91,6 +91,10 @@ Advanced users can host the built app themselves and point the preset at it:
 python sidee.py install smarttube --url http://192.168.1.20:8090/
 ```
 
+The hosted build already includes a proxy. A self-hosted build needs a proxy
+for 1080p and sign-in (Cloudflare Worker recommended); without one the TV
+shows only 360p/240p and cannot sign in or record history.
+
 The TV caches launcher entries by app id. When the app's versioned URL
 changes, install under the new id (the preset is updated with each release).
 
