@@ -72,31 +72,26 @@ Registered tiles remain in the TV launcher across restarts, even when Sidee is n
 
 ## SmartTube for VIDAA
 
-This fork includes a SmartTube preset for the hosted SmartTube web client for
-Hisense VIDAA TVs. SmartTube is not the Android app — VIDAA has no Android
+This fork includes a SmartTube preset for the self-hosted SmartTube web client
+for Hisense VIDAA TVs. SmartTube is not the Android app — VIDAA has no Android
 runtime. It is a separate web build installed as a normal launcher tile.
 
-- Hosted app: <https://antmagl.github.io/smarttube-vidaa/v16/index.html>
-- Source, Worker and preset: <https://github.com/antmagl/smarttube-vidaa>
+- Source, proxy and preset: <https://github.com/antmagl/smarttube-vidaa>
 
-After pairing the TV, choose **SmartTube** in the dashboard or run:
-
-```bash
-python sidee.py install smarttube
-```
-
-Advanced users can host the built app themselves and point the preset at it:
+There is no default hosted build and no shared proxy. Deploy your own proxy
+(Cloudflare Worker recommended), build the app with `SMARTTUBE_PROXY`, host the
+result, then install it with your URL:
 
 ```bash
-python sidee.py install smarttube --url http://192.168.1.20:8090/
+python sidee.py install smarttube --url https://your-host.example.com/
 ```
 
-The hosted build already includes a proxy. A self-hosted build needs a proxy
-for 1080p and sign-in (Cloudflare Worker recommended); without one the TV
-shows only 360p/240p and cannot sign in or record history.
+The dashboard asks for the same app address when you click **Install
+SmartTube**. Without your own proxy the TV shows only 360p/240p and cannot sign
+in or record watch history.
 
-The TV caches launcher entries by app id. When the app's versioned URL
-changes, install under the new id (the preset is updated with each release).
+The TV caches launcher entries by app id. When you change the hosted URL,
+install under a new id or remove and reinstall the old tile.
 
 ## How Sidee works
 

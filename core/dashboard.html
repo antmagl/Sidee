@@ -300,8 +300,9 @@
         </article>
         <article class="panel app smarttube">
           <div class="app-body">
-            <div class="smarttube-head"><img class="app-icon" src="/assets/smarttube.png" alt="" width="50" height="50"><div><h3>SmartTube</h3><small>Ad-free YouTube · VIDAA web build</small></div></div>
-            <p class="app-description">YouTube on your TV with SponsorBlock and D-pad focus.<br>Hosted build — works without a server.</p>
+            <div class="smarttube-head"><img class="app-icon" src="/assets/smarttube.png" alt="" width="50" height="50"><div><h3>SmartTube</h3><small>Ad-free YouTube · self-hosted</small></div></div>
+            <p class="app-description">YouTube on your TV with SponsorBlock and D-pad focus.<br>Enter the address where you host your own build.</p>
+            <div class="field"><label for="sturl">App address</label><input id="sturl" type="text" inputmode="url" autocomplete="url" spellcheck="false" placeholder="https://… or http://192.168.…:8090/" aria-describedby="sturlHelp sturlError"><span class="help-text" id="sturlHelp">Host SmartTube yourself. 1080p, sign-in and history need your own proxy.</span><span class="field-error" id="sturlError" hidden></span></div>
             <button class="button secondary" id="btnInstallStube" disabled><svg class="icon" aria-hidden="true"><use href="#i-download"/></svg><span>Install SmartTube</span></button>
           </div>
         </article>
@@ -318,7 +319,7 @@
         <p><b>The tile hasn't appeared?</b>Check the favorites row in your launcher. You may need to restart the TV.</p>
         <p><b>Can I close the installer?</b>After installation is confirmed, choose “Quit Sidee” on macOS or press Ctrl+C in the Windows launcher's window. Nuvio, SmartTube and the Stremio TV build open online from the TV launcher, so Sidee can be off. Jellyfin still needs its server; Stremio needs a streaming server only for playback that depends on one.</p>
         <p><b>Which Stremio is installed?</b>Sidee installs the full community-maintained VIDAA TV build based on Stremio Theater with a modern Stremio core — not the limited VIDAA Stremio Lite app. It is designed for remote-control focus, D-pad navigation and VIDAA viewport quirks. You can optionally link a LAN or Remote HTTPS streaming server.</p>
-        <p><b>How does SmartTube work?</b>SmartTube is an Android app and cannot run on VIDAA. This is a separate experimental web build for the TV browser, hosted online like Nuvio. Sidee only adds the launcher tile; no computer or local server needs to stay running. Advanced users can self-host the <code>vidaa/dist/</code> output and override the address from the command line.</p>
+        <p><b>How does SmartTube work?</b>SmartTube is an Android app and cannot run on VIDAA. This is a separate web build that you host yourself. Enter its address above; 1080p, Google sign-in and watch history require your own proxy (Cloudflare Worker recommended). Sidee only adds the launcher tile.</p>
         <p><b>SmartTube still shows the old build?</b>Restart the TV once, or remove the tile and install it again. The TV caches its app list, so a changed address can take a restart to apply.</p>
         <p><b>Still seeing the old Nuvio icon?</b>Restart the installer and install Nuvio again. If the old image remains, remove its tile from the TV launcher and reinstall it.</p>
         <p><b>Want to remove an app?</b>Open the tile's menu in the TV launcher and choose Remove.</p>
@@ -645,7 +646,7 @@
           $("bannerText").textContent = app === "stremio"
             ? "Press Home and open Stremio. Sidee can be closed; if you linked a streaming server, keep Stremio Service/Desktop running."
             : app === "smarttube"
-            ? "Press Home and open SmartTube. It is hosted online, so no server needs to stay running."
+            ? "Press Home and open SmartTube. Keep your proxy online for HD and sign-in."
             : "Press Home on your TV and select its tile. You can stop Sidee with Quit Sidee on macOS or Ctrl+C on Windows; Nuvio needs Internet and Jellyfin needs its server.";
           $("banner").hidden = false;
           $("banner").scrollIntoView({behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth", block: "nearest"});
@@ -690,7 +691,19 @@
     };
     $("jfsrv").oninput = () => { $("serverError").hidden = true; $("jfsrv").removeAttribute("aria-invalid"); };
     $("jfsrv").onkeydown = event => { if (event.key === "Enter" && !$("btnInstallJf").disabled) $("btnInstallJf").click(); };
-    $("btnInstallStube").onclick = () => installApp("smarttube");
+    $("btnInstallStube").onclick = () => {
+      const url = $("sturl").value.trim();
+      if (!url) {
+        $("sturlError").textContent = "Enter the address where you host SmartTube.";
+        $("sturlError").hidden = false;
+        $("sturl").setAttribute("aria-invalid", "true");
+        $("sturl").focus();
+        return;
+      }
+      installApp("smarttube", {app_url: url});
+    };
+    $("sturl").oninput = () => { $("sturlError").hidden = true; $("sturl").removeAttribute("aria-invalid"); };
+    $("sturl").onkeydown = event => { if (event.key === "Enter" && !$("btnInstallStube").disabled) $("btnInstallStube").click(); };
 
     function applyStatus(status) {
       clearTimeout(expiryTimer);

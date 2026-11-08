@@ -97,18 +97,13 @@ class TestSmartTubeAddresses(unittest.TestCase):
         self.assertEqual(url, "http://192.168.88.20:8090/smarttube/index.html")
         webui._validate_preset(dict(presets.get("smarttube"), url=url))
 
-    def test_hosted_default_is_one_click(self):
+    def test_install_without_a_url_is_rejected(self):
         handler = object.__new__(webui.Handler)
-        p = presets.get("smarttube")
-        with patch.object(client.Session, "load", return_value=object()), \
-             patch.object(client, "add_tile",
-                          return_value=[{"appId": "smarttube16",
-                                         "url": p["url"]}]) as add:
+        with patch.object(client, "add_tile") as add:
             result = handler._install({"app": "smarttube"})
-        self.assertTrue(result["ok"])
-        add.assert_called_once()
-        self.assertEqual(add.call_args.args[1:],
-                         ("smarttube16", "SmartTube v16", p["url"], p["image"]))
+        self.assertFalse(result["ok"])
+        self.assertIn("enter the address", result["error"])
+        add.assert_not_called()
 
     def test_custom_url_is_normalized_for_self_hosting(self):
         handler = object.__new__(webui.Handler)
@@ -140,19 +135,15 @@ class TestSmartTubeAddresses(unittest.TestCase):
         self.assertIn("localhost", output.call_args.args[0])
         load.assert_not_called()
 
-    def test_cli_uses_the_hosted_default(self):
-        p = presets.get("smarttube")
-        with patch.object(client.Session, "load", return_value=object()), \
-             patch.object(client, "add_tile",
-                          return_value=[{"appId": "smarttube16",
-                                         "url": p["url"]}]) as add, \
-             patch("builtins.print"):
+    def test_cli_requires_a_url(self):
+        with patch.object(client, "add_tile") as add, \
+             patch("builtins.print") as output:
             result = sidee.cmd_cli(SimpleNamespace(cmd="install",
                                                    preset="smarttube",
                                                    url=None))
-        self.assertEqual(result, 0)
-        self.assertEqual(add.call_args.args[1:],
-                         ("smarttube16", "SmartTube v16", p["url"], p["image"]))
+        self.assertEqual(result, 2)
+        self.assertIn("Enter the address", output.call_args.args[0])
+        add.assert_not_called()
 
 
 if __name__ == "__main__":

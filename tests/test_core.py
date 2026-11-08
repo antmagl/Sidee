@@ -157,15 +157,14 @@ class TestPresets(unittest.TestCase):
         self.assertEqual(f("https://media.example.com/jellyfin/"),
                          "https://media.example.com/jellyfin/web/index.html")
 
-    def test_smarttube_preset_uses_hosted_build(self):
+    def test_smarttube_preset_requires_a_host(self):
         p = presets.get("smarttube")
         self.assertTrue(p)
         self.assertEqual(p["app_id"], "smarttube16")
-        self.assertEqual(p["url"],
-                         "https://antmagl.github.io/smarttube-vidaa/v16/index.html")
-        self.assertEqual(p["image"],
-                         "https://antmagl.github.io/smarttube-vidaa/v16/icon.png")
+        self.assertEqual(p["url"], "")
+        self.assertTrue(p["needs_url"])
         self.assertTrue(p["supports_custom_url"])
+        self.assertTrue(p["image"].endswith("/vidaa/icon.png"))
         self.assertTrue(os.path.isfile(os.path.join(ROOT, p["icon"])))
 
     def test_build_smarttube_app_url(self):

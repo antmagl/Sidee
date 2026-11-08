@@ -38,14 +38,14 @@ PRESETS: dict[str, dict] = {
         "description": "Your media from your Jellyfin server",
     },
     "smarttube": {
-        "name": "SmartTube v16",
+        "name": "SmartTube",
         "app_id": "smarttube16",
-        # Hosted static build: like Nuvio, it needs no server on the LAN.
-        # The optional custom address lets advanced users self-host dist/.
-        "url": "https://antmagl.github.io/smarttube-vidaa/v16/index.html",
+        # No default host: each user must supply their own self-hosted build.
+        "needs_url": True,
         "supports_custom_url": True,
+        "url": "",
         "url_placeholder": "https://… or http://192.168.…:8090/",
-        "image": "https://antmagl.github.io/smarttube-vidaa/v16/icon.png",
+        "image": "https://raw.githubusercontent.com/antmagl/smarttube-vidaa/main/vidaa/icon.png",
         "icon": "assets/smarttube.png",
         "description": "Ad-free YouTube for VIDAA with SponsorBlock",
     },
