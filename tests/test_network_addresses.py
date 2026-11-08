@@ -91,5 +91,69 @@ class TestJellyfinAddresses(unittest.TestCase):
         load.assert_not_called()
 
 
+class TestSmartTubeAddresses(unittest.TestCase):
+    def test_lan_address_builds_an_http_tile_url(self):
+        url = presets.build_app_url("192.168.88.20:8090/smarttube")
+        self.assertEqual(url, "http://192.168.88.20:8090/smarttube/index.html")
+        webui._validate_preset(dict(presets.get("smarttube"), url=url))
+
+    def test_hosted_default_is_one_click(self):
+        handler = object.__new__(webui.Handler)
+        p = presets.get("smarttube")
+        with patch.object(client.Session, "load", return_value=object()), \
+             patch.object(client, "add_tile",
+                          return_value=[{"appId": "smarttube16",
+                                         "url": p["url"]}]) as add:
+            result = handler._install({"app": "smarttube"})
+        self.assertTrue(result["ok"])
+        add.assert_called_once()
+        self.assertEqual(add.call_args.args[1:],
+                         ("smarttube16", "SmartTube v16", p["url"], p["image"]))
+
+    def test_custom_url_is_normalized_for_self_hosting(self):
+        handler = object.__new__(webui.Handler)
+        expected = "http://192.168.88.20:8090/smarttube/index.html"
+        with patch.object(client.Session, "load", return_value=object()), \
+             patch.object(client, "add_tile",
+                          return_value=[{"appId": "smarttube16",
+                                         "url": expected}]) as add:
+            result = handler._install({"app": "smarttube",
+                                       "app_url": "192.168.88.20:8090/smarttube"})
+        self.assertTrue(result["ok"])
+        self.assertEqual(add.call_args.args[3], expected)
+
+    def test_invalid_custom_url_does_not_attempt_tv_installation(self):
+        handler = object.__new__(webui.Handler)
+        with patch.object(client.Session, "load") as load:
+            with self.assertRaisesRegex(ValueError, "localhost"):
+                handler._install({"app": "smarttube",
+                                  "app_url": "http://localhost:8090"})
+            load.assert_not_called()
+
+    def test_cli_rejects_an_invalid_custom_url(self):
+        with patch.object(client.Session, "load") as load, \
+             patch("builtins.print") as output:
+            result = sidee.cmd_cli(SimpleNamespace(cmd="install",
+                                                   preset="smarttube",
+                                                   url="http://localhost:8090"))
+        self.assertEqual(result, 2)
+        self.assertIn("localhost", output.call_args.args[0])
+        load.assert_not_called()
+
+    def test_cli_uses_the_hosted_default(self):
+        p = presets.get("smarttube")
+        with patch.object(client.Session, "load", return_value=object()), \
+             patch.object(client, "add_tile",
+                          return_value=[{"appId": "smarttube16",
+                                         "url": p["url"]}]) as add, \
+             patch("builtins.print"):
+            result = sidee.cmd_cli(SimpleNamespace(cmd="install",
+                                                   preset="smarttube",
+                                                   url=None))
+        self.assertEqual(result, 0)
+        self.assertEqual(add.call_args.args[1:],
+                         ("smarttube16", "SmartTube v16", p["url"], p["image"]))
+
+
 if __name__ == "__main__":
     unittest.main()

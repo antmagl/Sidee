@@ -1,7 +1,8 @@
 # macOS build and validation
 
 Sidee keeps one Python core and one browser dashboard. Windows continues to use
-its private embedded Python launcher and source ZIP. macOS uses PyInstaller's
+its private embedded Python launcher and source ZIP; Linux uses the
+[Linux build notes](linux-build.md). macOS uses PyInstaller's
 directory bundle to include Python, Paho, Tcl/Tk, the dashboard, its images, and
 the TV client certificate bundle inside `Sidee.app`. A small native control
 window opens the dashboard and stops the server; it does not replace the web UI.
@@ -34,13 +35,13 @@ declares macOS 15.0 as its minimum version, matching the CI baseline; older
 macOS versions are not supported by these bundles.
 
 Download artifacts from a successful run on the
-[Actions page](https://github.com/Empi9245/Sidee/actions/workflows/build.yml).
+[Actions page](https://github.com/antmagl/Sidee/actions/workflows/build.yml).
 GitHub requires sign-in for artifact downloads. On a `v*` tag, the workflow also
-creates or updates a **draft** release with `sidee-windows.zip` and both Mac
-DMG/app ZIP pairs. A `release: vX.Y.Z` commit on `main` publishes the verified
-packages as a Beta release after all builds succeed. Other branch builds do
-not publish a release. Version-specific notes come from `docs/releases/X.Y.Z.md`
-when that file exists.
+creates or updates a **draft** release with `sidee-windows.zip`, the Linux
+tarball, and both Mac DMG/app ZIP pairs. A `release: vX.Y.Z` commit on `main`
+publishes the verified packages as a Beta release after all builds succeed.
+Other branch builds do not publish a release. Version-specific notes come from
+`docs/releases/X.Y.Z.md` when that file exists.
 
 ## Build on macOS
 

@@ -129,8 +129,9 @@ def check_public_source(root):
     if unexpected:
         raise ReleaseBoundaryError("Unreviewed core modules: " + ", ".join(sorted(unexpected)))
     files = [root / name for name in PUBLIC_FILES]
-    if (root / "macos_launcher.py").is_file():
-        files.append(root / "macos_launcher.py")
+    for launcher in ("macos_launcher.py", "linux_launcher.py"):
+        if (root / launcher).is_file():
+            files.append(root / launcher)
     check_sources(root, files)
 
 

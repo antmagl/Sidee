@@ -215,6 +215,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if not p:
             return {"ok": False, "error": "unknown preset"}
         server = str(data.get("server", "")).strip()
+        app_url = str(data.get("app_url", "")).strip()
         if p.get("needs_server"):
             if not server:
                 return {"ok": False, "error": "enter your " + p["name"]
@@ -224,6 +225,17 @@ class Handler(http.server.BaseHTTPRequestHandler):
         elif p.get("server_builder") == "stremio":
             p = dict(p)
             p["url"] = presets.build_stremio_url(server)
+        elif p.get("needs_url"):
+            if not app_url:
+                app_url = server
+            if not app_url:
+                return {"ok": False, "error": "enter the address where "
+                                              + p["name"] + " is hosted"}
+            p = dict(p)
+            p["url"] = presets.build_app_url(app_url)
+        elif app_url and p.get("supports_custom_url"):
+            p = dict(p)
+            p["url"] = presets.build_app_url(app_url)
         _validate_preset(p)
         s = client.Session.load()
         apps = client.add_tile(s, p["app_id"], p["name"], p["url"],

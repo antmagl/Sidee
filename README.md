@@ -4,6 +4,11 @@
 
 **Your TV, your freedom.**
 
+> **Fork:** this repository is [antmagl's fork](https://github.com/antmagl/Sidee) of
+> [Empi9245/Sidee](https://github.com/Empi9245/Sidee). It adds Linux support and
+> a built-in SmartTube preset for Hisense VIDAA TVs. Upstream remains the
+> original project.
+
 Sidee is a free, open-source tool that helps people make more of the TVs they already own. Its simple browser dashboard lets you connect to a compatible TV and manage additional web-app launcher tiles, without coding, command-line setup, or specialist knowledge.
 
 Sidee is built around three principles:
@@ -14,7 +19,7 @@ Sidee is built around three principles:
 
 ## Requirements
 
-- Windows 10/11, or macOS 15+ (Apple Silicon or Intel)
+- Windows 10/11, macOS 15+ (Apple Silicon or Intel), or Linux (x86_64 or aarch64)
 - A compatible VIDAA TV and a computer on the same home Wi-Fi/Ethernet network
 - Internet access for the initial Windows setup and any online experiences you choose to open on the TV
 
@@ -24,7 +29,7 @@ Compatibility varies by TV model and firmware. The primary tested firmware is U0
 
 ### Windows
 
-1. [Download Sidee for Windows](https://github.com/Empi9245/Sidee/releases/download/v0.1.4.2/sidee-windows.zip) and extract the ZIP.
+1. [Download Sidee for Windows](https://github.com/antmagl/Sidee/releases) and extract the ZIP.
 2. Double-click `start-windows.bat` in the extracted folder.
 3. Wait for the dashboard to open in your browser, then follow the on-screen steps.
 
@@ -36,7 +41,7 @@ Keep the launcher window open while using the dashboard. If the browser does not
 
 The macOS download includes Sidee.app and its required runtime, so no separate Python installation or Terminal commands are needed.
 
-1. Get the package for your Mac from [Releases](https://github.com/Empi9245/Sidee/releases) or a successful [build workflow](https://github.com/Empi9245/Sidee/actions/workflows/build.yml). Choose `arm64` for Apple Silicon or `x64` for Intel.
+1. Get the package for your Mac from [Releases](https://github.com/antmagl/Sidee/releases) or a successful [build workflow](https://github.com/antmagl/Sidee/actions/workflows/build.yml). Choose `arm64` for Apple Silicon or `x64` for Intel.
 2. Open the DMG, drag Sidee.app to Applications, and launch it.
 3. Use **Open dashboard** in Sidee's control window.
 
@@ -44,15 +49,51 @@ The macOS download includes Sidee.app and its required runtime, so no separate P
 
 Sidee's control window must remain open while you use the dashboard; **Quit Sidee** stops the local dashboard service.
 
+### Linux
+
+The Linux download includes Sidee and its runtime, so no separate Python installation is needed.
+
+1. Download `Sidee-linux-x86_64.tar.gz` or `Sidee-linux-aarch64.tar.gz` from [Releases](https://github.com/antmagl/Sidee/releases) or a successful [build workflow](https://github.com/antmagl/Sidee/actions/workflows/build.yml).
+2. Extract it and run the `Sidee/sidee` executable.
+3. Use **Open dashboard** in Sidee's window, or open the address shown in your browser.
+
+Sidee uses a small Tk control window when Python's Tk bindings are available. If Tk is not installed it uses a desktop dialog instead, and still opens the same browser dashboard. Keep the Sidee window or dialog open; closing it stops the local dashboard service. On Wayland or X11 desktop sessions, no extra configuration is required for the dashboard itself.
+
+For a source checkout, run `python sidee.py` as shown under [Development](#development), or use `python linux_launcher.py` for the desktop launcher window.
+
 ## Connect your TV
 
 1. **Find TV:** Turn on your TV, put it on the same network as your computer, and select **Find TV**. Sidee uses the discovered address rather than assuming a fixed TV IP. If discovery fails, you can enter the address shown in the TV's network settings.
 2. **Request code:** Select **Request code** and enter the four-digit PIN displayed on your TV, then choose **Confirm code**. Pairing requires this confirmation.
-3. **Manage launcher tiles:** Choose an option offered in the dashboard and follow the confirmation steps. The available choices are maintained with Sidee; the dashboard does not currently accept arbitrary web-app URLs.
+3. **Manage launcher tiles:** Choose an option offered in the dashboard and follow the confirmation steps. The available choices are maintained with Sidee. SmartTube is a hosted web build, so it is one-click like Nuvio; the Android APK cannot run on VIDAA.
 
-Registered tiles remain in the TV launcher across restarts, even when Sidee is no longer running. The availability of the web experiences opened by those tiles depends on their own network requirements.
+Registered tiles remain in the TV launcher across restarts, even when Sidee is no longer running. The availability of the web experiences opened by those tiles depends on their own network requirements; SmartTube is hosted online and needs no computer or local server.
 
 **Want to use your phone?** The dashboard provides a locally generated QR code so you can open its controls on a phone connected to the same home network. Keep Sidee running on the computer and keep dashboard access links private.
+
+## SmartTube for VIDAA
+
+This fork includes a SmartTube preset for the hosted SmartTube web client for
+Hisense VIDAA TVs. SmartTube is not the Android app — VIDAA has no Android
+runtime. It is a separate web build installed as a normal launcher tile.
+
+- Hosted app: <https://antmagl.github.io/smarttube-vidaa/v16/index.html>
+- Source, Worker and preset: <https://github.com/antmagl/smarttube-vidaa>
+
+After pairing the TV, choose **SmartTube** in the dashboard or run:
+
+```bash
+python sidee.py install smarttube
+```
+
+Advanced users can host the built app themselves and point the preset at it:
+
+```bash
+python sidee.py install smarttube --url http://192.168.1.20:8090/
+```
+
+The TV caches launcher entries by app id. When the app's versioned URL
+changes, install under the new id (the preset is updated with each release).
 
 ## How Sidee works
 
@@ -76,7 +117,7 @@ If **Find TV** cannot locate your TV, check that both devices share the same net
 
 Some TVs advertise themselves rather than replying directly to discovery. In that case, keep the TV on and retry **Find TV**. For known firmware-specific pairing limitations, see the [compatibility notes](docs/toshiba-compatibility.md).
 
-On macOS, check **System Settings → Privacy & Security → Local Network** and, if needed, the firewall permissions for Sidee. Diagnostic logs are stored at `~/Library/Logs/Sidee/sidee.log`. Keep logs containing private access data confidential.
+On macOS, check **System Settings → Privacy & Security → Local Network** and, if needed, the firewall permissions for Sidee. Diagnostic logs are stored at `~/Library/Logs/Sidee/sidee.log`. On Linux, allow discovery and port 36669 through your firewall; diagnostic logs are stored at `~/.local/state/sidee/logs/sidee.log`. Keep logs containing private access data confidential.
 
 ## Development
 
@@ -93,6 +134,8 @@ Optional command-line interface:
 python sidee.py discover
 python sidee.py pair TV_IP
 python sidee.py install PRESET_ID
+python sidee.py install smarttube
+python sidee.py install smarttube --url http://192.168.1.20:8090/  # optional self-hosted build
 python sidee.py list
 python sidee.py launch PRESET_ID
 python sidee.py refresh
@@ -100,9 +143,11 @@ python sidee.py refresh
 
 Replace `TV_IP` with your TV's LAN address and `PRESET_ID` with an available built-in option. Pairing always requires the TV's authorization.
 
+On a Linux desktop, `python linux_launcher.py` opens the same dashboard in a small control window. If Tk is unavailable, install the distribution's Python Tk package (for example `python3-tk`) or let the launcher fall back to a browser/dialog session.
+
 Run Python tests with `python -m unittest discover -s tests` and dashboard interaction tests with `node --test tests/test_dashboard_selection.js`.
 
-Packaging information is in the [macOS build notes](docs/macos-build.md). Automated Windows and macOS builds are available through [GitHub Actions](https://github.com/Empi9245/Sidee/actions/workflows/build.yml).
+Packaging information is in the [macOS build notes](docs/macos-build.md) and [Linux build notes](docs/linux-build.md). Automated Windows, macOS, and Linux builds are available through [GitHub Actions](https://github.com/antmagl/Sidee/actions/workflows/build.yml).
 
 ## Why Sidee exists
 

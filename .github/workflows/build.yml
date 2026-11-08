@@ -125,10 +125,54 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
+  linux:
+    name: Linux tests and tarball
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: '3.13.16'
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: '22'
+          package-manager-cache: false
+      - name: Install Linux build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends python3-tk file
+      - name: Install the connection and packaging dependencies
+        run: python -m pip install paho-mqtt==2.1.0 PyInstaller==6.22.3
+      - name: Check imports, resources and Python syntax
+        run: |
+          python -m compileall -q sidee.py macos_launcher.py linux_launcher.py core tools tests
+          python sidee.py --self-test
+      - name: Run all source tests
+        run: |
+          python -u -X faulthandler -c "import faulthandler, unittest; faulthandler.dump_traceback_later(90, exit=True); result=unittest.TextTestRunner(verbosity=2).run(unittest.defaultTestLoader.discover('tests')); faulthandler.cancel_dump_traceback_later(); raise SystemExit(not result.wasSuccessful())"
+          node --test tests/test_dashboard_selection.js
+      - name: Start and stop the source dashboard
+        run: python tools/smoke_test.py --source
+      - name: Build and verify the native Linux bundle
+        run: python tools/build_linux_release.py --architecture x86_64
+      - name: Check the bundled runtime without GUI or a TV
+        run: dist/Sidee/sidee --self-test
+      - name: Start and stop the actual bundled executable
+        run: python tools/smoke_test.py --executable dist/Sidee/sidee
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: Sidee-Linux
+          path: dist/Sidee-linux-x86_64.tar.gz
+          if-no-files-found: error
+          retention-days: 30
+
   release:
     name: Prepare verified release assets
     if: "${{ github.event_name == 'push' && (startsWith(github.ref, 'refs/tags/v') || startsWith(github.event.head_commit.message, 'release: v')) }}"
-    needs: [windows, macos]
+    needs: [windows, macos, linux]
     runs-on: ubuntu-latest
     permissions:
       contents: write

@@ -11,7 +11,15 @@ import argparse
 import os
 import sys
 
-from core import client, presets, webui, native_session
+try:
+    from core import client, presets, webui, native_session
+except ModuleNotFoundError as error:
+    if (error.name or "").split(".")[0] == "paho":
+        print("Sidee needs the paho-mqtt connection library.\n"
+              "Install the requirements, then try again:\n"
+              "  python -m pip install -r requirements.txt", file=sys.stderr)
+        raise SystemExit(1)
+    raise
 
 
 def cmd_cli(a) -> int:
@@ -64,6 +72,14 @@ def cmd_cli(a) -> int:
             except ValueError as error:
                 print(str(error))
                 return 2
+        elif p.get("needs_url") or (
+                p.get("supports_custom_url") and getattr(a, "url", None)):
+            p = dict(p)
+            try:
+                p["url"] = presets.build_app_url(getattr(a, "url", "") or "")
+            except ValueError as error:
+                print(str(error))
+                return 2
         s = client.Session.load()
         apps = client.add_tile(s, p["app_id"], p["name"], p["url"], p["image"])
         ok = any(client.tile_matches_request(x, p["app_id"], p["url"]) for x in apps)
@@ -75,8 +91,15 @@ def cmd_cli(a) -> int:
         if not p:
             print("unknown preset")
             return 2
-        client.launch_tile(client.Session.load(), p["app_id"], p["name"],
-                           p["url"])
+        url = p["url"]
+        if p.get("needs_url") or (
+                p.get("supports_custom_url") and getattr(a, "url", None)):
+            try:
+                url = presets.build_app_url(getattr(a, "url", "") or "")
+            except ValueError as error:
+                print(str(error))
+                return 2
+        client.launch_tile(client.Session.load(), p["app_id"], p["name"], url)
         print("launched")
         return 0
     return 2
@@ -100,8 +123,10 @@ def main() -> int:
     sub.add_parser("refresh")
     ins = sub.add_parser("install"); ins.add_argument("preset")
     ins.add_argument("--server", help="server address (for Jellyfin or Stremio)")
+    ins.add_argument("--url", help="hosted app address (for SmartTube)")
     sub.add_parser("list")
     la = sub.add_parser("launch"); la.add_argument("preset")
+    la.add_argument("--url", help="hosted app address (for SmartTube)")
     a = p.parse_args()
 
     if a.port is not None and not 0 <= a.port <= 65535:

@@ -36,14 +36,30 @@ def profile_dir() -> Path:
     return base
 
 
+def xdg_state_home() -> Path:
+    """Return the per-user state directory on Linux-like desktops."""
+    value = os.environ.get("XDG_STATE_HOME", "").strip()
+    if value:
+        candidate = Path(value).expanduser()
+        if candidate.is_absolute():
+            return candidate
+    return Path(os.path.expanduser("~")) / ".local" / "state"
+
+
+def is_linux() -> bool:
+    return sys.platform.startswith("linux")
+
+
 def dashboard_state_path(project_root: str | Path) -> Path:
-    """Keep writable runtime files outside a frozen macOS application bundle."""
+    """Keep writable runtime files outside a frozen application bundle."""
     override = _state_override()
     if override is not None:
         return override / "runtime" / "dashboard.json"
     if sys.platform == "darwin" and getattr(sys, "frozen", False):
         return (Path(os.path.expanduser("~")) / "Library" / "Application Support"
                 / "Sidee" / "runtime" / "dashboard.json")
+    if is_linux() and getattr(sys, "frozen", False):
+        return xdg_state_home() / "sidee" / "runtime" / "dashboard.json"
     return Path(project_root) / ".runtime" / "dashboard.json"
 
 
@@ -153,21 +169,92 @@ def broadcasts_from_ifconfig(output: str) -> list[str]:
     return sorted({target for _, target in _interfaces_from_ifconfig(output)})
 
 
+_IP_ADDR_INET = re.compile(
+    r"^\s*\d+:\s+(?P<name>\S+)\s+inet\s+"
+    r"(?P<host>\d{1,3}(?:\.\d{1,3}){3})/(?P<prefix>\d{1,2})\b"
+    r"(?P<rest>.*)$")
+# These interfaces are host-only bridges/tunnels, not the user's home LAN.
+_VIRTUAL_INTERFACE_PREFIXES = (
+    "docker", "veth", "br-", "virbr", "tun", "tap", "wg", "zt",
+    "tailscale", "podman", "cni", "flannel", "kube", "dummy",
+)
+
+
+def _is_virtual_interface(name: str) -> bool:
+    name = name.split("@", 1)[0].lower()
+    return name == "lo" or name.startswith(_VIRTUAL_INTERFACE_PREFIXES)
+
+
+def _interfaces_from_ip_addr(output: str) -> list[tuple[str, str]]:
+    """Parse `ip -o -4 addr show`, which is available on modern Linux.
+
+    Prefer the broadcast address reported by the kernel. Compute one from the
+    prefix when an interface does not print it, but ignore point-to-point and
+    host/link-scope addresses (VPN tunnels, loopback and link-local only).
+    """
+    interfaces: set[tuple[str, str]] = set()
+    for line in output.splitlines():
+        match = _IP_ADDR_INET.match(line)
+        if not match or _is_virtual_interface(match.group("name")):
+            continue
+        rest = match.group("rest")
+        lowered = rest.lower()
+        if " peer " in f" {lowered} " or "scope host" in lowered:
+            continue
+        try:
+            address = ipaddress.IPv4Address(match.group("host"))
+            prefix = int(match.group("prefix"))
+        except (ValueError, ipaddress.AddressValueError):
+            continue
+        if (prefix > 32 or address.is_loopback or address.is_unspecified
+                or address.is_multicast or address.is_link_local):
+            continue
+        broadcast = re.search(r"\bbrd\s+(\d{1,3}(?:\.\d{1,3}){3})\b", rest)
+        if broadcast:
+            try:
+                target = str(ipaddress.IPv4Address(broadcast.group(1)))
+            except ipaddress.AddressValueError:
+                target = None
+        else:
+            target = _broadcast(match.group("host"), str(prefix))
+        if target:
+            interfaces.add((str(address), target))
+    return sorted(interfaces)
+
+
+def broadcasts_from_ip_addr(output: str) -> list[str]:
+    return sorted({target for _, target in _interfaces_from_ip_addr(output)})
+
+
+def _run_interface_command(command: list[str], parser, **kwargs):
+    try:
+        result = subprocess.run(command, **kwargs)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    return parser(result.stdout) if result.returncode == 0 else None
+
+
 def local_ipv4_interfaces() -> list[tuple[str, str]]:
     """Inspect native LAN interfaces, returning their IPv4/broadcast pairs."""
     kwargs = dict(capture_output=True, text=True, errors="replace", timeout=3)
     if sys.platform == "darwin":
-        command, parser = ["/sbin/ifconfig"], _interfaces_from_ifconfig
+        commands = [(["/sbin/ifconfig"], _interfaces_from_ifconfig)]
     elif os.name == "nt":
-        command, parser = ["ipconfig"], _interfaces_from_ipconfig
+        commands = [(["ipconfig"], _interfaces_from_ipconfig)]
         kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
+    elif is_linux():
+        # `ip` is part of iproute2 and is present on current distributions.
+        # Keep net-tools' ifconfig as a fallback for minimal/older systems.
+        commands = [(["ip", "-o", "-4", "addr", "show"], _interfaces_from_ip_addr),
+                    (["/sbin/ifconfig"], _interfaces_from_ifconfig),
+                    (["ifconfig"], _interfaces_from_ifconfig)]
     else:
         return []
-    try:
-        result = subprocess.run(command, **kwargs)
-        return parser(result.stdout) if result.returncode == 0 else []
-    except (OSError, subprocess.TimeoutExpired):
-        return []
+    for command, parser in commands:
+        interfaces = _run_interface_command(command, parser, **kwargs)
+        if interfaces is not None:
+            return interfaces
+    return []
 
 
 def local_broadcasts() -> list[str]:

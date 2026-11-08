@@ -157,6 +157,37 @@ class TestPresets(unittest.TestCase):
         self.assertEqual(f("https://media.example.com/jellyfin/"),
                          "https://media.example.com/jellyfin/web/index.html")
 
+    def test_smarttube_preset_uses_hosted_build(self):
+        p = presets.get("smarttube")
+        self.assertTrue(p)
+        self.assertEqual(p["app_id"], "smarttube16")
+        self.assertEqual(p["url"],
+                         "https://antmagl.github.io/smarttube-vidaa/v16/index.html")
+        self.assertEqual(p["image"],
+                         "https://antmagl.github.io/smarttube-vidaa/v16/icon.png")
+        self.assertTrue(p["supports_custom_url"])
+        self.assertTrue(os.path.isfile(os.path.join(ROOT, p["icon"])))
+
+    def test_build_smarttube_app_url(self):
+        f = presets.build_app_url
+        self.assertEqual(f("192.168.1.20:8090"),
+                         "http://192.168.1.20:8090/index.html")
+        self.assertEqual(f("http://192.168.1.20:8090/smarttube"),
+                         "http://192.168.1.20:8090/smarttube/index.html")
+        self.assertEqual(f("https://example.test/smarttube/index.html"),
+                         "https://example.test/smarttube/index.html")
+        self.assertEqual(f("https://example.test/smarttube/"),
+                         "https://example.test/smarttube/index.html")
+        self.assertEqual(f("nas.casa.local:8090"),
+                         "http://nas.casa.local:8090/index.html")
+        self.assertEqual(f("example.test"),
+                         "https://example.test/index.html")
+        for value in ("", "localhost:8090", "http://127.0.0.1:8090",
+                      "http://[::1]:8090", "192.168.1.2:8090?x=1",
+                      "http://user:pass@192.168.1.2:8090"):
+            with self.assertRaises(ValueError):
+                f(value)
+
     def test_private_host_rule(self):
         f = presets.is_private_host
         self.assertTrue(f("192.168.1.50"))

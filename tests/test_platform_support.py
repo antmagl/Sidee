@@ -30,6 +30,22 @@ en3: flags=8863<UP,BROADCAST,SMART,RUNNING,SIMPLEX,MULTICAST> mtu 1500
 """
 
 
+LINUX_IP_ADDR = """1: lo    inet 127.0.0.1/8 scope host lo\\       valid_lft forever preferred_lft forever
+2: enp3s0    inet 192.168.88.5/24 brd 192.168.88.255 scope global dynamic noprefixroute enp3s0\\       valid_lft 86300sec preferred_lft 86300sec
+3: wlan0    inet 10.23.7.5/22 brd 10.23.7.255 scope global wlan0\\       valid_lft forever preferred_lft forever
+4: tun0    inet 10.8.0.5 peer 10.8.0.1/32 scope global tun0\\       valid_lft forever preferred_lft forever
+5: docker0    inet 172.17.0.1/16 brd 172.17.255.255 scope global docker0\\       valid_lft forever preferred_lft forever
+6: enp0s31f6    inet 169.254.2.5/16 brd 169.254.255.255 scope link enp0s31f6\\       valid_lft forever preferred_lft forever
+7: wg0    inet 10.0.0.2/24 scope global wg0\\       valid_lft forever preferred_lft forever
+"""
+
+LINUX_IFCONFIG = """enp3s0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.88.5  netmask 255.255.255.0  broadcast 192.168.88.255
+lo: flags=73<UP,LOOPBACK,RUNNING>  mtu 65536
+        inet 127.0.0.1  netmask 255.0.0.0
+"""
+
+
 class TestPlatformPaths(unittest.TestCase):
     def setUp(self):
         folder = tempfile.TemporaryDirectory()
@@ -75,6 +91,26 @@ class TestPlatformPaths(unittest.TestCase):
                          / "runtime" / "dashboard.json")
         self.assertFalse(bundle.exists())
         self.assertFalse(state.exists())
+
+    def test_frozen_linux_state_lives_in_the_user_state_directory(self):
+        home = self.folder / "home"
+        with patch.object(platform.sys, "platform", "linux"), \
+                patch.object(platform.sys, "frozen", True, create=True), \
+                patch.object(platform.os.path, "expanduser", return_value=str(home)), \
+                patch.dict(os.environ, {"XDG_STATE_HOME": ""}):
+            state = platform.dashboard_state_path(self.folder)
+        self.assertEqual(state, home / ".local" / "state" / "sidee"
+                         / "runtime" / "dashboard.json")
+
+    def test_xdg_state_home_is_used_when_absolute(self):
+        home = self.folder / "home"
+        xdg = self.folder / "xdg"
+        with patch.object(platform.sys, "platform", "linux"), \
+                patch.object(platform.sys, "frozen", True, create=True), \
+                patch.object(platform.os.path, "expanduser", return_value=str(home)), \
+                patch.dict(os.environ, {"XDG_STATE_HOME": str(xdg)}):
+            state = platform.dashboard_state_path(self.folder)
+        self.assertEqual(state, xdg / "sidee" / "runtime" / "dashboard.json")
 
     def test_explicit_state_override_isolated_from_real_pairing(self):
         home = self.folder / "home"
@@ -201,6 +237,41 @@ class TestMacDiscovery(unittest.TestCase):
         with patch.object(platform.sys, "platform", "darwin"), \
                 patch.object(platform.subprocess, "run", return_value=Mock(returncode=1)):
             self.assertEqual(platform.local_broadcasts(), [])
+
+
+class TestLinuxDiscovery(unittest.TestCase):
+    def test_iproute2_addresses_skip_vpn_bridges_and_link_local(self):
+        self.assertEqual(platform.broadcasts_from_ip_addr(LINUX_IP_ADDR),
+                         ["10.23.7.255", "192.168.88.255"])
+
+    def test_linux_uses_ip_addr_before_ifconfig(self):
+        response = Mock(returncode=0, stdout=LINUX_IP_ADDR)
+        with patch.object(platform.sys, "platform", "linux"), \
+                patch.object(platform.subprocess, "run", return_value=response) as run:
+            self.assertEqual(platform.local_ipv4_interfaces(),
+                             [("10.23.7.5", "10.23.7.255"),
+                              ("192.168.88.5", "192.168.88.255")])
+        run.assert_called_once_with(["ip", "-o", "-4", "addr", "show"],
+                                    capture_output=True, text=True,
+                                    errors="replace", timeout=3)
+
+    def test_linux_falls_back_to_ifconfig_when_ip_is_missing(self):
+        missing = FileNotFoundError("ip is not installed")
+        response = Mock(returncode=0, stdout=LINUX_IFCONFIG)
+        with patch.object(platform.sys, "platform", "linux"), \
+                patch.object(platform.subprocess, "run",
+                             side_effect=[missing, response]) as run:
+            self.assertEqual(platform.local_ipv4_interfaces(),
+                             [("192.168.88.5", "192.168.88.255")])
+        self.assertEqual(run.call_args_list[0].args[0],
+                         ["ip", "-o", "-4", "addr", "show"])
+        self.assertEqual(run.call_args_list[1].args[0], ["/sbin/ifconfig"])
+
+    def test_linux_interface_errors_keep_discovery_available(self):
+        with patch.object(platform.sys, "platform", "linux"), \
+                patch.object(platform.subprocess, "run",
+                             side_effect=subprocess.TimeoutExpired("ip", 3)):
+            self.assertEqual(platform.local_ipv4_interfaces(), [])
 
 
 class TestSocketLifecycle(unittest.TestCase):

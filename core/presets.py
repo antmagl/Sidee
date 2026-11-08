@@ -37,6 +37,18 @@ PRESETS: dict[str, dict] = {
         "icon": "assets/jellyfin.png",
         "description": "Your media from your Jellyfin server",
     },
+    "smarttube": {
+        "name": "SmartTube v16",
+        "app_id": "smarttube16",
+        # Hosted static build: like Nuvio, it needs no server on the LAN.
+        # The optional custom address lets advanced users self-host dist/.
+        "url": "https://antmagl.github.io/smarttube-vidaa/v16/index.html",
+        "supports_custom_url": True,
+        "url_placeholder": "https://… or http://192.168.…:8090/",
+        "image": "https://antmagl.github.io/smarttube-vidaa/v16/icon.png",
+        "icon": "assets/smarttube.png",
+        "description": "Ad-free YouTube for VIDAA with SponsorBlock",
+    },
 }
 
 
@@ -113,3 +125,43 @@ def build_stremio_url(server: str = "") -> str:
     normalized = urlunsplit(
         (parsed.scheme, parsed.netloc, parsed.path or "", parsed.query, parsed.fragment))
     return base + "&server=" + quote(normalized, safe="")
+
+
+def build_app_url(value: str) -> str:
+    """Address of a user-hosted web app -> a validated launcher-tile URL.
+
+    SmartTube is a static web app, so Sidee only needs to know where the TV
+    can reach it. HTTP is allowed only on a LAN host; public hosts must use
+    HTTPS. Loopback would point at the TV itself and is rejected.
+    """
+    value = value.strip()
+    if not value:
+        raise ValueError("Enter the address where SmartTube is hosted.")
+    if "://" not in value:
+        value = ("http://" if is_private_host(value) else "https://") + value
+    parsed = urlsplit(value)
+    if parsed.scheme not in ("http", "https") or not parsed.hostname:
+        raise ValueError("Use the full address of the hosted SmartTube app.")
+    if parsed.username or parsed.password:
+        raise ValueError("The app address must not contain a username or password.")
+    if parsed.query or parsed.fragment:
+        raise ValueError("Remove the query string or fragment from the app address.")
+    host = parsed.hostname.rstrip(".").lower()
+    try:
+        address = ipaddress.ip_address(host)
+    except ValueError:
+        address = None
+    if (host == "localhost" or host.endswith(".localhost") or
+            (address and (address.is_loopback or address.is_unspecified
+                          or address.is_link_local or address.is_multicast))):
+        raise ValueError("Use the address your TV can reach; localhost points "
+                         "at the TV itself.")
+    path = parsed.path or "/"
+    # Use an explicit index.html so the TV reports back exactly the address
+    # Sidee sent. Some launchers normalise a bare "/" and then the install
+    # confirmation cannot find the tile.
+    if path.endswith("/"):
+        path += "index.html"
+    elif not path.rsplit("/", 1)[-1].endswith(".html"):
+        path += "/index.html"
+    return urlunsplit((parsed.scheme, parsed.netloc, path, "", ""))
