@@ -32,20 +32,31 @@ Compatibility varies by TV model and firmware. The primary tested firmware is U0
 
 This fork is installed from source. It does not publish release packages.
 
+Clone the repository first:
+
 ```bash
 git clone https://github.com/antmagl/Sidee
 cd Sidee
+```
+
+### macOS and Linux
+
+```bash
+python3 -m pip install -r requirements.txt
+python3 sidee.py
+```
+
+### Windows
+
+```bash
 python -m pip install -r requirements.txt
 python sidee.py
 ```
 
-- On Windows use `python` in the commands.
-- On macOS and Linux use `python3`.
-- The dashboard opens in your browser. Keep the terminal open while Sidee is
-  running; press `Ctrl+C` to stop it.
-- If the browser does not open automatically, use the full dashboard link
-  printed in the terminal, including its access key.
-- If Windows requests network access, allow it on your trusted home network.
+The dashboard opens in your browser. Keep the terminal open while Sidee is
+running; press `Ctrl+C` to stop it. If the browser does not open automatically,
+use the full dashboard link printed in the terminal, including its access key.
+If Windows requests network access, allow it on your trusted home network.
 
 Then continue with [Connect your TV](#connect-your-tv).
 
