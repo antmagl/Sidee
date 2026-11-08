@@ -126,7 +126,7 @@ python sidee.py discover
 python sidee.py pair TV_IP
 python sidee.py install PRESET_ID
 python sidee.py install smarttube
-python sidee.py install smarttube --url http://192.168.1.20:8090/  # optional self-hosted build
+python sidee.py install smarttube --url http://192.168.1.20:8090/  # your hosted build
 python sidee.py list
 python sidee.py launch PRESET_ID
 python sidee.py refresh
